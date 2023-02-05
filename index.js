@@ -1,16 +1,16 @@
 'use strict';
 
-var crypto = require('crypto');
+const hotp = {};
 
 /**
  * convert an integer to a byte array
  * @param {Integer} num
- * @return {Array} bytes
+ * @return {Uint8Array} bytes
  */
 function intToBytes(num) {
-	var bytes = [];
+	let bytes = new Uint8Array(8);
 
-	for(var i=7 ; i>=0 ; --i) {
+	for(let i=7 ; i>=0 ; --i) {
 		bytes[i] = num & (255);
 		num = num >> 8;
 	}
@@ -19,23 +19,9 @@ function intToBytes(num) {
 }
 
 /**
- * convert a hex value to a byte array
- * @param {String} hex string of hex to convert to a byte array
- * @return {Array} bytes
- */
-function hexToBytes(hex) {
-	var bytes = [];
-	for(var c = 0, C = hex.length; c < C; c += 2) {
-		bytes.push(parseInt(hex.substr(c, 2), 16));
-	}
-	return bytes;
-}
-
-var hotp = {};
-
-/**
  * Generate a counter based One Time Password
  *
+ * @param {Uint8Array} key secret
  * @return {String} the one time password
  *
  * Arguments:
@@ -48,29 +34,25 @@ var hotp = {};
  *         be user specific, and be incremented for each request.
  *
  */
-hotp.gen = function(key, opt) {
-	key = key || '';
+hotp.gen = async function(key, opt) {
+	key = key || new Uint8Array(0);
 	opt = opt || {};
-	var counter = opt.counter || 0;
-
-	var p = 6;
+	const counter = opt.counter || 0;
+	const enc = new TextEncoder();
+	const algorithm = { name: "HMAC", hash: "SHA-1" };
 
 	// Create the byte array
-	var b = new Buffer(intToBytes(counter));
+	const b = intToBytes(counter);
 
-	var hmac = crypto.createHmac('sha1', new Buffer(key));
-
-	// Update the HMAC with the byte array
-	var digest = hmac.update(b).digest('hex');
-
-	// Get byte array
-	var h = hexToBytes(digest);
+	key = await crypto.subtle.importKey("raw", key, algorithm, false, ["sign", "verify"]);
+	let signature = await crypto.subtle.sign(algorithm.name, key, b);
+	const h = new Uint8Array(signature);
 
 	// Truncate
-	var offset = h[19] & 0xf;
-	var v = (h[offset] & 0x7f) << 24 |
+	const offset = h[19] & 0xf;
+	let v = (h[offset] & 0x7f) << 24 |
 		(h[offset + 1] & 0xff) << 16 |
-		(h[offset + 2] & 0xff) << 8  |
+		(h[offset + 2] & 0xff) << 8 |
 		(h[offset + 3] & 0xff);
 
 	v = (v % 1000000) + '';
@@ -107,16 +89,16 @@ hotp.gen = function(key, opt) {
  *         be user specific, and be incremented for each request.
  *
  */
-hotp.verify = function(token, key, opt) {
+hotp.verify = async function(token, key, opt) {
 	opt = opt || {};
-	var window = opt.window || 50;
-	var counter = opt.counter || 0;
+	const window = opt.window || 50;
+	const counter = opt.counter || 0;
 
 	// Now loop through from C to C + W to determine if there is
 	// a correct code
-	for(var i = counter - window; i <=  counter + window; ++i) {
+	for(let i = counter - window; i <=  counter + window; ++i) {
 		opt.counter = i;
-		if(this.gen(key, opt) === token) {
+		if(await hotp.gen(key, opt) === token) {
 			// We have found a matching code, trigger callback
 			// and pass offset
 			return { delta: i - counter };
@@ -127,7 +109,7 @@ hotp.verify = function(token, key, opt) {
 	return null;
 };
 
-var totp = {};
+const totp = {};
 
 /**
  * Generate a time based One Time Password
@@ -146,14 +128,14 @@ var totp = {};
  *         Default - 30
  *
  */
-totp.gen = function(key, opt) {
+totp.gen = async function(key, opt) {
 	opt = opt || {};
-	var time = opt.time || 30;
-	var _t = Date.now();
+	const time = opt.time || 30;
+	let _t = Date.now();
 
 	// Time has been overwritten.
 	if(opt._t) {
-		if(process.env.NODE_ENV != 'test') {
+		if(process.env.NODE_ENV !== 'test') {
 			throw new Error('cannot overwrite time in non-test environment!');
 		}
 		_t = opt._t;
@@ -197,14 +179,14 @@ totp.gen = function(key, opt) {
  *         Default - 30
  *
  */
-totp.verify = function(token, key, opt) {
+totp.verify = async function(token, key, opt) {
 	opt = opt || {};
-	var time = opt.time || 30;
-	var _t = Date.now();
+	const time = opt.time || 30;
+	let _t = Date.now();
 
 	// Time has been overwritten.
 	if(opt._t) {
-		if(process.env.NODE_ENV != 'test') {
+		if(process.env.NODE_ENV !== 'test') {
 			throw new Error('cannot overwrite time in non-test environment!');
 		}
 		_t = opt._t;

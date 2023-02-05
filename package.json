@@ -1,23 +1,15 @@
 {
-  "author": "Guy Halford-Thompson <guy@guy.ht> (http://guy.ht)",
-  "name": "notp",
-  "description": "Node One Time Password library, supports HOTP, TOTP and works with Google Authenticator",
-  "version": "2.0.3",
-  "homepage": "https://github.com/guyht/notp",
+  "author": "Noel Németh <noel@noelnemeth.com>",
+  "name": "wotp",
+  "description": "Web Crypto One Time Password library, supports HOTP, TOTP",
+  "version": "1.0.0",
+  "homepage": "https://github.com/Likespace-Kft/wotp",
   "repository": {
     "type": "git",
-    "url": "git://github.com/guyht/notp.git"
+    "url": "git://github.com/Likespace-Kft/wotp.git"
   },
   "main": "index.js",
-  "scripts": {
-    "test": "NODE_ENV=test mocha"
-  },
   "engines": {
     "node": "> v0.6.0"
-  },
-  "dependencies": {},
-  "devDependencies": {
-    "mocha": "~1.18.2",
-    "thirty-two": "0.0.2"
   }
 }
